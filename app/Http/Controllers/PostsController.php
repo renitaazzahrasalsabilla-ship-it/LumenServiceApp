@@ -14,41 +14,19 @@ class PostsController extends Controller
      */
     public function index(Request $request)
     {
-        $acceptHeader = $request->header('Accept');
+        $posts = Post::OrderBy("id", "DESC")->paginate(2)->toArray();
+        
+        $response = [
+            "total_count" => $posts["total"],
+            "limit" => $posts["per_page"],
+            "pagination" => [
+                "next_page" => $posts["next_page_url"],
+                "current_page" => $posts["current_page"]
+            ],
+            "data" => $posts["data"]
+        ];
 
-        // validasi: hanya application/json atau application/xml yang valid
-        if ($acceptHeader === 'application/json' || $acceptHeader === 'application/xml') {
-            $posts = Post::orderBy("id", "DESC")->paginate(10);
-
-            $outPut = [
-                "message" => "posts",
-                "results" => $posts
-            ];
-
-            // Jika request minta JSON
-            if ($acceptHeader === 'application/json') {
-                return response()->json($posts, 200);
-            } 
-            
-            // Jika request minta XML (Tantangan / Set Response Format)
-            else {
-                $xml = new \SimpleXMLElement('<posts/>');
-                foreach ($posts->items('data') as $item) {
-                    $xmlItem = $xml->addChild('post');
-                    $xmlItem->addChild('id', $item->id);
-                    $xmlItem->addChild('title', $item->title);
-                    $xmlItem->addChild('status', $item->status);
-                    $xmlItem->addChild('content', $item->content);
-                    $xmlItem->addChild('user_id', $item->user_id);
-                    $xmlItem->addChild('created_at', $item->created_at);
-                    $xmlItem->addChild('updated_at', $item->updated_at);
-                }
-                return response($xml->asXML(), 200)->header('Content-Type', 'application/xml');
-            }
-
-        } else {
-            return response('Not Acceptable!', 406);
-        }
+        return response()->json($response, 200);
     }
 
     /**
@@ -59,82 +37,40 @@ class PostsController extends Controller
      */
     public function store(Request $request)
     {
-        $acceptHeader = $request->header('Accept');
+    $input = $request->all();
 
-        // validasi Accept Header: hanya application/json atau application/xml
-        if ($acceptHeader === 'application/json' || $acceptHeader === 'application/xml') {
-            
-            $contentTypeHeader = $request->header('Content-Type');
+    $validationRules = [
+        'title' => 'required|min:5',
+        'content' => 'required|min:10',
+        'status' => 'required|in:draft,published',
+        'user_id' => 'required|exists:users,id'
+    ];
 
-            // validasi Content-Type Header: hanya application/json
-            if ($contentTypeHeader === 'application/json') {
-                $input = $request->all();
-                $post = Post::create($input);
+    $validator = \Validator::make($input, $validationRules);
 
-                // Response JSON
-                if ($acceptHeader === 'application/json') {
-                    return response()->json($post, 200);
-                } 
-                
-                // Response XML untuk Create (Tantangan 1)
-                else {
-                    $xml = new \SimpleXMLElement('<post/>');
-                    $xml->addChild('id', $post->id);
-                    $xml->addChild('title', $post->title);
-                    $xml->addChild('status', $post->status);
-                    $xml->addChild('content', $post->content);
-                    $xml->addChild('user_id', $post->user_id);
-                    $xml->addChild('created_at', $post->created_at);
-                    $xml->addChild('updated_at', $post->updated_at);
+    if ($validator->fails()) {
+        return response()->json($validator->errors(), 400);
+    }
 
-                    return response($xml->asXML(), 200)->header('Content-Type', 'application/xml');
-                }
-
-            } else {
-                return response('Unsupported Media Type', 415);
-            }
-
-        } else {
-            return response('Not Acceptable!', 406);
-        }
+    $post = Post::create($input);
+    return response()->json($post, 200);
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show(Request $request, $id)
+    public function show($id)
     {
-        $acceptHeader = $request->header('Accept');
+        $post = Post::find($id);
 
-        // Validasi Accept Header untuk function show (Tantangan 2)
-        if ($acceptHeader === 'application/json' || $acceptHeader === 'application/xml') {
-            $post = Post::find($id);
-
-            if (!$post) {
-                return response('Not Found', 404);
-            }
-
-            if ($acceptHeader === 'application/json') {
-                return response()->json($post, 200);
-            } else {
-                $xml = new \SimpleXMLElement('<post/>');
-                $xml->addChild('id', $post->id);
-                $xml->addChild('title', $post->title);
-                $xml->addChild('status', $post->status);
-                $xml->addChild('content', $post->content);
-                $xml->addChild('user_id', $post->user_id);
-                $xml->addChild('created_at', $post->created_at);
-                $xml->addChild('updated_at', $post->updated_at);
-
-                return response($xml->asXML(), 200)->header('Content-Type', 'application/xml');
-            }
-        } else {
-            return response('Not Acceptable!', 406);
+        if (!$post) {
+            abort(404);
         }
+
+        return response()->json($post, 200);
     }
 
     /**
@@ -146,82 +82,47 @@ class PostsController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $acceptHeader = $request->header('Accept');
+    $input = $request->all();
 
-        // Validasi Accept Header untuk update (Tantangan 2)
-        if ($acceptHeader === 'application/json' || $acceptHeader === 'application/xml') {
-            
-            $contentTypeHeader = $request->header('Content-Type');
+    $post = Post::find($id);
+    if (!$post) {
+        abort(404);
+    }
 
-            // Validasi Content-Type Header untuk update (Tantangan 3)
-            if ($contentTypeHeader === 'application/json') {
-                $post = Post::find($id);
+    $validationRules = [
+        'title' => 'required|min:5',
+        'content' => 'required|min:10',
+        'status' => 'required|in:draft,published',
+        'user_id' => 'required|exists:users,id'
+    ];
 
-                if (!$post) {
-                    return response('Not Found', 404);
-                }
+    $validator = \Validator::make($input, $validationRules);
 
-                $input = $request->all();
-                $post->fill($input);
-                $post->save();
+    if ($validator->fails()) {
+        return response()->json($validator->errors(), 400);
+    }
 
-                if ($acceptHeader === 'application/json') {
-                    return response()->json($post, 200);
-                } else {
-                    $xml = new \SimpleXMLElement('<post/>');
-                    $xml->addChild('id', $post->id);
-                    $xml->addChild('title', $post->title);
-                    $xml->addChild('status', $post->status);
-                    $xml->addChild('content', $post->content);
-                    $xml->addChild('user_id', $post->user_id);
-                    $xml->addChild('created_at', $post->created_at);
-                    $xml->addChild('updated_at', $post->updated_at);
+    $post->fill($input);
+    $post->save();
 
-                    return response($xml->asXML(), 200)->header('Content-Type', 'application/xml');
-                }
-
-            } else {
-                return response('Unsupported Media Type', 415);
-            }
-
-        } else {
-            return response('Not Acceptable!', 406);
-        }
+    return response()->json($post, 200);
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Request $request, $id)
+    public function destroy($id)
     {
-        $acceptHeader = $request->header('Accept');
+        $post = Post::find($id);
 
-        // Validasi Accept Header untuk destroy/delete (Tantangan 2)
-        if ($acceptHeader === 'application/json' || $acceptHeader === 'application/xml') {
-            $post = Post::find($id);
-
-            if (!$post) {
-                return response('Not Found', 404);
-            }
-
-            $post->delete();
-            $message = ['message' => 'deleted successfully', 'post_id' => $id];
-
-            if ($acceptHeader === 'application/json') {
-                return response()->json($message, 200);
-            } else {
-                $xml = new \SimpleXMLElement('<response/>');
-                $xml->addChild('message', 'deleted successfully');
-                $xml->addChild('post_id', $id);
-
-                return response($xml->asXML(), 200)->header('Content-Type', 'application/xml');
-            }
-        } else {
-            return response('Not Acceptable!', 406);
+        if (!$post) {
+            abort(404);
         }
+
+        $post->delete();
+        return response()->json(['message' => 'deleted successfully', 'post_id' => $id], 200);
     }
 }

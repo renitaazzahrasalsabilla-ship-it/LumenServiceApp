@@ -31,7 +31,7 @@ $router->get('/scores', ['middleware' => 'login', function () {
 
 $router->get('/user', 'UsersController@index');
 
-$router->get('/', function () {
+$router->get('/service-status', function () {
     return response()->json([
         'service_name' => 'PHP Service App',
         'status' => 'Running'
@@ -117,7 +117,7 @@ $router->get('/users/{userId}', function ($userId) {
         ]
     ];
 
-    return response()->json($users[$userId]);
+    return response()->json($users[$userId] ?? ['message' => 'User not found']);
 });
 
 $router->get('categories', 'CategoriesController@index');
@@ -126,12 +126,18 @@ $router->get('categories/{id}', 'CategoriesController@show');
 $router->put('categories/{id}', 'CategoriesController@update');
 $router->delete('categories/{id}', 'CategoriesController@destroy');
 
-// Post
-$router->get('/posts', 'PostsController@index');
-$router->post('/posts', 'PostsController@store');
-$router->get('/post/{id}', 'PostsController@show');
-$router->put('/post/{id}', 'PostsController@update');
-$router->delete('/post/{id}', 'PostsController@destroy');
+// Route Authentication (Tanpa Middleware Auth)
+$router->post('/auth/register', 'AuthController@register');
+$router->post('/auth/login', 'AuthController@login');
+
+// Route CRUD Posts yang diproteksi JWT Authentication (Menggunakan 'auth:api')
+$router->group(['middleware' => ['auth:api']], function ($router) {
+    $router->get('/posts', 'PostsController@index');
+    $router->post('/posts', 'PostsController@store');
+    $router->get('/posts/{id}', 'PostsController@show');
+    $router->put('/posts/{id}', 'PostsController@update');
+    $router->delete('/posts/{id}', 'PostsController@destroy');
+});
 
 $router->get('/tags', 'TagsController@index');
 $router->post('/tags', 'TagsController@store');
@@ -144,3 +150,14 @@ $router->post('/books', 'BooksController@store');
 $router->get('/books/{id}', 'BooksController@show');
 $router->put('/books/{id}', 'BooksController@update');
 $router->delete('/books/{id}', 'BooksController@destroy');
+
+// Authentication Routes Group Tambahan
+$router->group(['prefix' => 'auth'], function () use ($router) {
+    $router->post('/register', 'AuthController@register');
+    $router->post('/login', 'AuthController@login');
+    $router->delete('logout', 'AuthController@logout');
+     
+    $router->get('/me', ['middleware' => 'auth:api', function () {
+        return response()->json(auth()->user());
+    }]);
+});

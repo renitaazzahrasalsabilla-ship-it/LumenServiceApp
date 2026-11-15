@@ -37,23 +37,23 @@ class PostsController extends Controller
      */
     public function store(Request $request)
     {
-    $input = $request->all();
+        $input = $request->all();
 
-    $validationRules = [
-        'title' => 'required|min:5',
-        'content' => 'required|min:10',
-        'status' => 'required|in:draft,published',
-        'user_id' => 'required|exists:users,id'
-    ];
+        $validationRules = [
+            'title' => 'required|min:5',
+            'content' => 'required|min:10',
+            'status' => 'required|in:draft,published',
+            'user_id' => 'required|exists:users,id'
+        ];
 
-    $validator = \Validator::make($input, $validationRules);
+        $validator = \Validator::make($input, $validationRules);
 
-    if ($validator->fails()) {
-        return response()->json($validator->errors(), 400);
-    }
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
 
-    $post = Post::create($input);
-    return response()->json($post, 200);
+        $post = Post::create($input);
+        return response()->json($post, 200);
     }
 
     /**
@@ -82,30 +82,30 @@ class PostsController extends Controller
      */
     public function update(Request $request, $id)
     {
-    $input = $request->all();
+        $input = $request->all();
 
-    $post = Post::find($id);
-    if (!$post) {
-        abort(404);
-    }
+        $post = Post::find($id);
+        if (!$post) {
+            abort(404);
+        }
 
-    $validationRules = [
-        'title' => 'required|min:5',
-        'content' => 'required|min:10',
-        'status' => 'required|in:draft,published',
-        'user_id' => 'required|exists:users,id'
-    ];
+        $validationRules = [
+            'title' => 'required|min:5',
+            'content' => 'required|min:10',
+            'status' => 'required|in:draft,published',
+            'user_id' => 'required|exists:users,id'
+        ];
 
-    $validator = \Validator::make($input, $validationRules);
+        $validator = \Validator::make($input, $validationRules);
 
-    if ($validator->fails()) {
-        return response()->json($validator->errors(), 400);
-    }
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
 
-    $post->fill($input);
-    $post->save();
+        $post->fill($input);
+        $post->save();
 
-    return response()->json($post, 200);
+        return response()->json($post, 200);
     }
 
     /**

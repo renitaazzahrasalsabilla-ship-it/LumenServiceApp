@@ -161,3 +161,10 @@ $router->group(['prefix' => 'auth'], function () use ($router) {
         return response()->json(auth()->user());
     }]);
 });
+
+
+// Public Endpoint
+$router->get('/public/posts', 'Public\PostsController@index');
+$router->get('/public/post/{postID}', 'Public\PostsController@show');
+$router->post('/public/posts', 'Public\PostsController@create');
+
